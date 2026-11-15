@@ -5,5 +5,5 @@
 //  podrán descargar su constancia en PDF.
 // ============================================================
 window.CONFIG = {
-  URL_HOJA: ""
+  URL_HOJA: "https://script.google.com/macros/s/AKfycbxcmYaagcq8kKxDOgUHnaA2lHTXKSo5AM4MFb_VgJKPC0Vi1pE_23r7X-PgVLfSLTXdOA/exec"
 };
