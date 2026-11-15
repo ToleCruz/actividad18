@@ -14,11 +14,14 @@ const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelect
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 // ---------- estado
-let S=load();
+const GAS=window.MODO==="gas";
+let S=GAS?gasLoad():load();
 function blank(){const a={};ACTS.forEach(k=>a[k]={int:0,best:0,done:false,closed:false,ans:null,hist:[]});return{nombre:"",lista:"",inicio:false,acts:a,enviado:false,fecha:null};}
 function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.acts)return o;}}catch(e){}return blank();}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
-if(/[?&]reiniciar=1/.test(location.search)){S=blank();save();history.replaceState(null,"",location.pathname);}
+function gasLoad(){let s=(window.PROG&&window.PROG.acts)?window.PROG:blank();const a=window.ALUMNO||{};s.nombre=a.nombre||"";s.lista=String(a.lista||"");s.correo=a.correo||"";return s;}
+let _svT=null;
+function save(now){if(GAS){clearTimeout(_svT);const f=()=>{try{google.script.run.withFailureHandler(()=>toast("No se pudo guardar tu avance. Revisa tu conexión.")).guardarProgreso(GRUPO,JSON.stringify(S));}catch(e){}};if(now)f();else _svT=setTimeout(f,1500);return;}try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+if(!GAS&&/[?&]reiniciar=1/.test(location.search)){S=blank();save();history.replaceState(null,"",location.pathname);}
 
 // ---------- utilidades
 function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
@@ -207,17 +210,18 @@ function render(){
  if(!S.inicio){
   h+=`<section class="card"><div class="kicker">Antes de comenzar</div><h2>Bienvenida y bienvenido</h2>
   <p>En esta actividad leerás <b>6 contenidos formativos</b> y resolverás <b>8 actividades interactivas</b>. Cada actividad se desbloquea cuando terminas la anterior.</p>
-  <div class="box alert"><b>Reglas</b><p>• Cada actividad tiene <b>3 intentos</b> y tu calificación es la de tu <b>mejor intento</b>.<br>• Al verificar verás qué respuestas debes revisar, pero <b>no se te dirá la respuesta correcta</b>.<br>• Tu avance se guarda en este dispositivo y navegador. Usa siempre el mismo.<br>• Al final obtendrás tu <b>promedio</b> y enviarás tus resultados a tu docente.</p></div>
-  <div class="form"><div><label for="fnom">Nombre completo (empezando por apellidos)</label><input type="text" id="fnom" maxlength="80" placeholder="Ej. Hernández Cruz María Fernanda"></div>
+  <div class="box alert"><b>Reglas</b><p>• Cada actividad tiene <b>3 intentos</b> y tu calificación es la de tu <b>mejor intento</b>.<br>• Al verificar verás qué respuestas debes revisar, pero <b>no se te dirá la respuesta correcta</b>.<br>• ${GAS?"Tu avance se guarda en tu cuenta del CBTis: puedes continuar desde cualquier equipo.":"Tu avance se guarda en este dispositivo y navegador. Usa siempre el mismo."}<br>• Al final obtendrás tu <b>promedio</b> y enviarás tus resultados a tu docente.</p></div>
+  ${GAS?`<div class="caso"><b>TUS DATOS (verificados con tu cuenta del CBTis)</b><br>${esc(S.nombre)} · No. de lista ${esc(S.lista)}<br>${esc(S.correo)}</div>`:""}<div class="form" style="${GAS?"display:none":""}"><div><label for="fnom">Nombre completo (empezando por apellidos)</label><input type="text" id="fnom" maxlength="80" placeholder="Ej. Hernández Cruz María Fernanda"></div>
   <div><label for="flis">Número de lista</label><input type="number" id="flis" min="1" max="60"></div></div>
   <button class="btn" id="fgo">COMENZAR ACTIVIDAD</button></section>`;
   app.innerHTML=h;
-  $("#fgo").onclick=()=>{const n=$("#fnom").value.trim().replace(/\s+/g," "),l=$("#flis").value.trim();
+  if(GAS)$("#fgo").onclick=()=>{S.inicio=true;S.fecha=new Date().toISOString();save(true);render();window.scrollTo(0,0);};
+  else $("#fgo").onclick=()=>{const n=$("#fnom").value.trim().replace(/\s+/g," "),l=$("#flis").value.trim();
    if(n.split(" ").length<3){toast("Escribe tu nombre completo (apellidos y nombre).");return;}
    if(!l){toast("Escribe tu número de lista.");return;}
    S.nombre=n;S.lista=l;S.inicio=true;S.fecha=new Date().toISOString();save();render();window.scrollTo(0,0);};
   updTop();return;}
- h+=`<section class="card"><div class="kicker">Alumno</div><p style="margin:0"><b>${esc(S.nombre)}</b> · Grupo ${GRUPO} · No. de lista ${esc(S.lista)}</p></section>`;
+ h+=`<section class="card"><div class="kicker">Alumno</div><p style="margin:0"><b>${esc(S.nombre)}</b> · Grupo ${GRUPO} · No. de lista ${esc(S.lista)}${GAS?" · "+esc(S.correo):""}</p></section>`;
  let open=true,num=0;const toBind=[];
  PLAN.forEach((ids,li)=>{const L=LECT[li];
   if(!open){h+=`<section class="card locked"><div class="lk">🔒</div><div class="pop"><b>Lectura ${li+1}. ${L.titulo}</b></div><p>Termina la actividad anterior para desbloquear esta lectura.</p></section>`;num+=ids.length;return;}
@@ -257,7 +261,7 @@ function verify(id){const st=S.acts[id],a=A[id];if(st.closed)return;
  const res=a.check(v),c=res.filter(Boolean).length,t=res.length,s=r1(c/t*10);
  st.int++;st.best=Math.max(st.best,s);st.ans=v;st.hist.push({c,t,s,f:Date.now()});
  if(c===t){st.done=true;st.closed=true;}else if(st.int>=MAXI)st.closed=true;
- save();a.mark(res);
+ save(true);a.mark(res);
  $$("#"+id+" .dots i").forEach((d,i)=>d.classList.toggle("used",i<st.int));
  if(st.closed){render();setTimeout(()=>{const e=$("#"+id);if(e)e.scrollIntoView({block:"start"});window.scrollBy(0,-70);},30);toast(st.done?"¡Actividad completada!":"Actividad cerrada. Se desbloqueó lo siguiente.");}
  else showState(id);
@@ -274,11 +278,11 @@ function resultsHTML(){const p=promedio();
  <p class="meta">Folio de verificación: <b>${folio()}</b></p>
  <div class="foot"><button class="btn verde" id="env">${S.enviado?"RESULTADOS ENVIADOS ✔ (reenviar)":"ENVIAR MIS RESULTADOS AL DOCENTE"}</button><button class="btn sec" id="imp">DESCARGAR CONSTANCIA (PDF)</button></div>
  <div class="res" id="envm"></div>
- ${S.enviado?`<div class="foot"><button class="btn" id="nuevo" style="background:#5F6366;box-shadow:none">DEJAR EL EQUIPO LISTO PARA OTRO ALUMNO</button></div>`:""}</section>`;}
-function payload(){const o={grupo:GRUPO,nombre:S.nombre,lista:S.lista,promedio:promedio(),folio:folio(),inicio:S.fecha,fin:new Date().toISOString(),agente:navigator.userAgent.slice(0,120)};
+ ${S.enviado&&!GAS?`<div class="foot"><button class="btn" id="nuevo" style="background:#5F6366;box-shadow:none">DEJAR EL EQUIPO LISTO PARA OTRO ALUMNO</button></div>`:""}</section>`;}
+function payload(){const o={grupo:GRUPO,nombre:S.nombre,lista:S.lista,correo:S.correo||"",promedio:promedio(),folio:folio(),inicio:S.fecha,fin:new Date().toISOString(),agente:navigator.userAgent.slice(0,120)};
  ACTS.forEach((k,i)=>{o["a"+(i+1)]=S.acts[k].best;o["i"+(i+1)]=S.acts[k].int;});return o;}
 function bindResults(){
- $("#env").onclick=async()=>{const m=$("#envm"),url=(window.CONFIG&&CONFIG.URL_HOJA||"").trim();
+ $("#env").onclick=async()=>{if(GAS){const m=$("#envm");$("#env").disabled=true;m.className="res show warn";m.textContent="Enviando...";google.script.run.withSuccessHandler(()=>{S.enviado=true;save(true);m.className="res show ok";m.innerHTML="¡Resultados enviados a tu docente!<small>Quedaron registrados con tu correo "+esc(S.correo)+".</small>";setTimeout(()=>{render();$("#resultados").scrollIntoView();},1800);}).withFailureHandler(err=>{m.className="res show bad";m.innerHTML="No se pudo enviar: "+esc(err&&err.message||err)+"<small>Inténtalo de nuevo. Si sigue fallando, descarga tu constancia.</small>";$("#env").disabled=false;}).enviarResultados(GRUPO,JSON.stringify(payload()));return;}const m=$("#envm"),url=(window.CONFIG&&CONFIG.URL_HOJA||"").trim();
   if(!url||url.indexOf("script.google.com")<0){m.className="res show warn";m.innerHTML="El envío automático aún no está configurado.<small>Descarga tu constancia en PDF y súbela a Google Classroom.</small>";return;}
   $("#env").disabled=true;m.className="res show warn";m.textContent="Enviando...";
   try{await fetch(url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload())});
@@ -291,7 +295,7 @@ function bindResults(){
 function buildConst(){const p=promedio();
  $("#constancia").innerHTML=`<div style="border-bottom:4px solid #BC955C;padding-bottom:8px;margin-bottom:12px"><div style="color:#8F6F36;font-weight:700;font-family:Poppins">CBTis No. 187 · CULTURA DIGITAL 1</div>
  <h1>Constancia de resultados · Actividad 18 (Propósito 7)</h1></div>
- <p><b>Alumno:</b> ${esc(S.nombre)} &nbsp; <b>Grupo:</b> ${GRUPO} &nbsp; <b>No. de lista:</b> ${esc(S.lista)}<br><b>Docente:</b> M.T.I. Félix Tolentino Cruz &nbsp; <b>Fecha:</b> ${new Date().toLocaleString("es-MX")}</p>
+ <p><b>Alumno:</b> ${esc(S.nombre)} &nbsp; <b>Grupo:</b> ${GRUPO} &nbsp; <b>No. de lista:</b> ${esc(S.lista)}${S.correo?" &nbsp; <b>Correo:</b> "+esc(S.correo):""}<br><b>Docente:</b> M.T.I. Félix Tolentino Cruz &nbsp; <b>Fecha:</b> ${new Date().toLocaleString("es-MX")}</p>
  <table><tr><th>#</th><th>Actividad</th><th>Intentos</th><th>Calificación</th></tr>${ACTS.map((k,i)=>`<tr><td>${i+1}</td><td>${ANAMES[k]}</td><td>${S.acts[k].int} de 3</td><td>${S.acts[k].best.toFixed(1)}</td></tr>`).join("")}
  <tr><td></td><td><b>PROMEDIO FINAL</b></td><td></td><td><b>${p.toFixed(1)}</b></td></tr></table>
  <p><b>Folio de verificación:</b> ${folio()}</p>`;}
