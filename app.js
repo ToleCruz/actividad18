@@ -131,8 +131,8 @@ A.a3={inst:"Lee el caso y clasifica cada elemento como Entrada, Proceso o Salida
  lock(){D.a3.items.forEach((x,i)=>$("#a3s"+i).disabled=true);}
 };
 // A5 matriz
-function mxTotals(){return D.a5.alts.map(a=>r1(a[1].reduce((s,v,j)=>s+v*D.a5.criterios[j][1]/100,0)));}
-A.a5={inst:"Calcula el puntaje total de cada alternativa (calificación × peso, y suma). Escribe el total con un decimal y después elige la mejor alternativa.",
+function mxTotals(){return D.a5.alts.map(a=>a[1].reduce((s,v,j)=>s+v*D.a5.criterios[j][1]/100,0));}
+A.a5={inst:(()=>{const c=D.a5.criterios,e=[5,7,4],p=c.map(x=>x[1]/100);const parts=e.map((v,j)=>v+" × "+p[j].toFixed(2));const vals=e.map((v,j)=>+(v*p[j]).toFixed(2));const tot=+vals.reduce((a,b)=>a+b,0).toFixed(2);return "<b>Cómo se calcula:</b> en cada fila, multiplica cada calificación por el peso de su criterio escrito en decimal ("+c.map(x=>x[1]+" % = "+(x[1]/100).toFixed(2)).join(", ")+") y suma los resultados.<br><b>Ejemplo con otros números:</b> si una alternativa tuviera "+e.join(", ")+" → "+parts.join(" + ")+" = "+vals.join(" + ")+" = <b>"+tot+"</b>.<br>Escribe el total de cada alternativa en la columna <b>Total</b> (con uno o dos decimales) y al final elige la alternativa con el total más alto.";})(),
  html(){const c=D.a5.criterios;return `<div class="caso"><b>DECISIÓN</b><br>${esc(D.a5.caso)}</div><div class="tw"><table class="mx"><tr><th>Alternativa</th>${c.map(x=>`<th>${esc(x[0])} (${x[1]} %)</th>`).join("")}<th>Total</th></tr>`+
   D.a5.alts.map((a,i)=>`<tr id="a5r${i}"><td><b>${esc(a[0])}</b></td>${a[1].map(v=>`<td>${v}</td>`).join("")}<td><input type="number" step="0.01" inputmode="decimal" id="a5t${i}" placeholder="0.0"><span class="mark"></span></td></tr>`).join("")+
   `</table></div><div class="q" id="a5qb"><span class="n">★</span><span class="txt">¿Cuál es la mejor alternativa?</span><div class="ctl">${selHTML("a5b",D.a5.alts.map(a=>a[0]))}<span class="mark"></span></div></div>`;},
