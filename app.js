@@ -163,7 +163,7 @@ A.a6={inst:D.a6.modo==="funcion"?"Observa cada símbolo y elige para qué sirve.
 // A7 completar diagrama
 const BL=["A","B","C","D","E"];
 function a7pool(){return shuffle(BL.map(b=>D.a7[b]).concat(D.a7.distr),D.seed*23+9);}
-A.a7={inst:"Completa el diagrama de flujo: elige qué va en cada casilla (A, B, C, D y E). El diagrama se actualizará con tus respuestas.",
+A.a7={inst:"Completa el diagrama de flujo: elige qué instrucción va en cada casilla (A, B, C, D y E). El diagrama se actualizará con tus respuestas.<br><b>Pista: fíjate en la forma de cada casilla.</b> <b>A</b> es un paralelogramo de <b>entrada</b>: aquí se leen los datos. <b>B</b> es un rectángulo de <b>proceso</b>: aquí se hace el cálculo. <b>C</b> es un rombo de <b>decisión</b>: aquí va una pregunta que se responde con Sí o No. <b>D</b> es lo que se muestra si la respuesta es <b>Sí</b> y <b>E</b> lo que se muestra si es <b>No</b>.<br><b>Cuidado:</b> en la lista hay 8 opciones y solo usarás 5; las demás son trampas con errores.",
  html(){const pool=a7pool();return `<div class="caso"><b>PROBLEMA</b><br>${esc(D.a7.titulo)}</div><div class="flow"><div id="a7svg"></div><div>`+
   BL.map(b=>`<div class="blk" id="a7r${b}"><span class="L">${b}</span><div>${selHTML("a7s"+b,pool)}<span class="mark"></span></div></div>`).join("")+`</div></div>`;},
  draw(){const pool=a7pool(),T={};BL.forEach(b=>{const v=$("#a7s"+b).value;T[b]=v===""?b:pool[+v];});$("#a7svg").innerHTML=flowSVG(T);},
